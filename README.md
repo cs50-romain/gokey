@@ -1,4 +1,4 @@
-# GoPass - Simple Password Manager CLI Tool
+# GoKey - Simple Password Manager CLI Tool
 
 GoPass is a straightforward command-line interface (CLI) tool written in Golang for managing passwords. It allows users to easily generate, store, and retrieve passwords securely.
 
