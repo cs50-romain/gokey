@@ -19,9 +19,8 @@ type Config struct {
 	DB_File			string `json:"db_file"`
 	Hashed_Master_Password	string `json:"hashed_password"`
 	Hash_Used		string `json:"hash_used"`
+	Created			int    `json:"created"`
 }
-
-const master_password = "BuffB@by101"
 
 const asciilogo = `
    ___                      
@@ -42,36 +41,54 @@ Examples:
 `
 
 func main() {
-	// TESTING ONLY; HASHING master_password
-	// THIS IS ONLY FOR SETUP SO IF config.json DOES NOT EXIST
-	master_pass, err := bcrypt.GenerateFromPassword([]byte(master_password), 14)
-	config := Config{
-		DB_File: "gopass.db",
-		Hashed_Master_Password: "",
-		Hash_Used: "bcrypt",
-	}
-
-	b, err := json.MarshalIndent(config, "", " ")
-	if err != nil {
-		log.Fatal("[ERROR] Error Marshaling golang type; main.go -> ", err)
-	}
-	os.WriteFile("config.json", b, 0600)
-
+	// SETUP TESTING ONLY; HASHING master_password
 	color.PrintBold(string(asciilogo), color.ElectricPink)
 	color.PrintBold(string(possible_cmds), color.LimeGreen)
 
-	color.PrintBold("Please enter master password: ", color.TealGreen)
-	input, err := term.ReadPassword(int(syscall.Stdin)) 
+	b, err := os.ReadFile("config.json")
 	if err != nil {
-		log.Fatal("[ERROR] Error reading user input; main.go -> ", err)
+		log.Fatal("[ERROR] Error reading config.json; main.go -> ", err)
 	}
 
-	err = bcrypt.CompareHashAndPassword(master_pass, input)
+	var config Config
+	err = json.Unmarshal(b, &config)
 	if err != nil {
-		fmt.Println("Invalid master password")
-		os.Exit(0)
+		log.Fatal("[ERROR] Error unmarshaling config.json; main.go -> ", err)
 	}
-	fmt.Println()
+
+	// First time running program, set master password
+	if config.Created == 0 && config.Hashed_Master_Password == "" {
+		color.PrintBold("Please create master password: ", color.TealGreen)
+		input, err := term.ReadPassword(int(syscall.Stdin)) 
+		master_pass, err := bcrypt.GenerateFromPassword(input, 14)
+		config.Hashed_Master_Password = string(master_pass)
+		config.Created = 1
+
+		if err != nil {
+			log.Fatal("[ERROR] Error reading user input; main.go -> ", err)
+		}	
+	
+		b, err := json.MarshalIndent(config, "", " ")
+		if err != nil {
+			log.Fatal("[ERROR] Error Marshaling golang type; main.go -> ", err)
+		}
+		os.WriteFile("config.json", b, 0600)
+		fmt.Println()
+	} else {
+		master_pass := config.Hashed_Master_Password
+		color.PrintBold("Please enter master password: ", color.TealGreen)
+		input, err := term.ReadPassword(int(syscall.Stdin)) 
+		if err != nil {
+			log.Fatal("[ERROR] Error reading user input; main.go -> ", err)
+		}
+
+		err = bcrypt.CompareHashAndPassword([]byte(master_pass), input)
+		if err != nil {
+			fmt.Println("Invalid master password")
+			os.Exit(0)
+		}
+		fmt.Println()
+	}
 	
 	reader := bufio.NewReader(os.Stdin)
 	for {
