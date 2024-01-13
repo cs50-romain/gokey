@@ -72,7 +72,7 @@ func main() {
 		if err != nil {
 			log.Fatal("[ERROR] Error Marshaling golang type; main.go -> ", err)
 		}
-		os.WriteFile("config.json", b, 0600)
+		os.WriteFile("config.json", b, 444)
 		fmt.Println()
 	} else {
 		master_pass := config.Hashed_Master_Password
@@ -99,6 +99,6 @@ func main() {
 		}
 		input = strings.TrimSuffix(input, "\n")
 		inputarr := strings.Split(input, " ")
-		cmd.Execute(inputarr)
+		cmd.Execute(inputarr, []byte(config.Hashed_Master_Password))
 	}
 }
