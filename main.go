@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"cs50-romain/gokey/internal/crypto"
 	color "cs50-romain/gokey/pkg/colors"
 	"encoding/json"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"syscall"
 
 	"cs50-romain/gokey/cmd"
+
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/term"
 )
@@ -19,6 +21,7 @@ type Config struct {
 	DB_File			string `json:"db_file"`
 	Hashed_Master_Password	string `json:"hashed_password"`
 	Hash_Used		string `json:"hash_used"`
+	Salt_Used		[]byte `json:"salt_used"`
 	Created			int    `json:"created"`
 }
 
@@ -61,7 +64,14 @@ func main() {
 		color.PrintBold("Please create master password: ", color.TealGreen)
 		input, err := term.ReadPassword(int(syscall.Stdin)) 
 		master_pass, err := bcrypt.GenerateFromPassword(input, 14)
+
 		config.Hashed_Master_Password = string(master_pass)
+		salt, err := crypto.GenerateRandomSalt(32)
+		if err != nil {
+			log.Fatal("[ERROR] Error generating salt; main.go -> ", err)
+		}
+
+		config.Salt_Used = salt
 		config.Created = 1
 
 		if err != nil {
@@ -81,7 +91,7 @@ func main() {
 		if err != nil {
 			log.Fatal("[ERROR] Error reading user input; main.go -> ", err)
 		}
-
+		
 		err = bcrypt.CompareHashAndPassword([]byte(master_pass), input)
 		if err != nil {
 			fmt.Println("Invalid master password")
@@ -89,6 +99,8 @@ func main() {
 		}
 		fmt.Println()
 	}
+
+	derived_key := crypto.DeriveKey(config.Hashed_Master_Password, config.Salt_Used)
 	
 	reader := bufio.NewReader(os.Stdin)
 	for {
@@ -99,6 +111,6 @@ func main() {
 		}
 		input = strings.TrimSuffix(input, "\n")
 		inputarr := strings.Split(input, " ")
-		cmd.Execute(inputarr, []byte(config.Hashed_Master_Password))
+		cmd.Execute(inputarr, derived_key)
 	}
 }
