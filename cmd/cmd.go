@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -82,18 +83,24 @@ func showCreds(name string, key []byte) {
 	}
 
 	var password string
+	var username string
 	for _, entry := range creds.Entries {
 		if entry.Name == name {
-			fmt.Println(entry)
-			password = entry.EncryptedPassword	
+			username = entry.Username
+			password = entry.EncryptedPassword
 		}
 	}
+	base64_password, err := base64.StdEncoding.DecodeString(password)
+	if err != nil {
+		log.Fatal("[ERROR] Error decoding base64 password; cmd.go -> ", err)
+	}
 
-	b, err = crypto.Decrypt([]byte(password), key)
+	b, err = crypto.Decrypt(base64_password, key)
 	if err != nil {
 		log.Fatal("[ERROR] Error decrypting; cmd.go -> ", err)
 	}
 
+	fmt.Printf("Username: %s\nPassword: %s\n", username, string(b))
 }
 
 func storeCreds(name string, key []byte) {
@@ -129,10 +136,11 @@ func storeCreds(name string, key []byte) {
 	if err != nil {
 		log.Fatal("[ERROR] Error encrypting; cmd.go -> ", err)
 	}
+	fmt.Printf("Encrypted Pass: %x\n", encrypted_pass)
 
-	creds.Entries = append(creds.Entries, struct{Name string "json:\"name\""; Username string "json:\"username\""; EncryptedPassword string "json:\"encrypted_password\""}{name, username, string(encrypted_pass)})
+	base64_string := base64.StdEncoding.EncodeToString(encrypted_pass)
 
-	fmt.Println(creds.Entries)
+	creds.Entries = append(creds.Entries, struct{Name string "json:\"name\""; Username string "json:\"username\""; EncryptedPassword string "json:\"encrypted_password\""}{name, username, base64_string})
 
 	b, err = json.Marshal(creds)
 
