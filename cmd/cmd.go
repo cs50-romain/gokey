@@ -12,6 +12,7 @@ import (
 
 	crypto "cs50-romain/gokey/internal/crypto"
 	color "cs50-romain/gokey/pkg/colors"
+	clipboard "cs50-romain/gokey/pkg/clipboard"
 
 	"golang.org/x/term"
 )
@@ -49,6 +50,7 @@ func Execute(args []string, key []byte) {
 			showCreds(args[2], key)
 		} else {
 			color.PrintBold("Copying creds for " + command.Name, color.ElectricPink)
+			copyCreds(args[2], key)
 		}
 		fmt.Println()
 	}
@@ -71,6 +73,16 @@ func buildCommand(args []string) *Command {
 }
 
 func showCreds(name string, key []byte) {
+	username, password := getCreds(name, key)
+	fmt.Printf("Username: %s\nPassword: %s\n", username, password)
+}
+
+func copyCreds(name string, key []byte) {
+	_, password := getCreds(name, key)	
+	clipboard.CopytoClipboard(password)
+}
+
+func getCreds(name string, key []byte) (string, string) {
 	var creds Creds
 	b, err := os.ReadFile("gokey.json")
 	if err != nil {
@@ -100,7 +112,7 @@ func showCreds(name string, key []byte) {
 		log.Fatal("[ERROR] Error decrypting; cmd.go -> ", err)
 	}
 
-	fmt.Printf("Username: %s\nPassword: %s\n", username, string(b))
+	return username, string(b)
 }
 
 func storeCreds(name string, key []byte) {
