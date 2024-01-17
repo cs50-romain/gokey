@@ -37,7 +37,7 @@ func Execute(args []string, key []byte) {
 
 	command := buildCommand(args)
 	
-	if command.Main != "new" && command.Main != "copy" && command.Main != "show" {
+	if command.Main != "new" && command.Main != "copy" && command.Main != "show" && command.Main != "list" {
 		log.Fatal("[ERROR] Invalid command;")
 	} else {
 		if command.Main == "new" {
@@ -48,9 +48,13 @@ func Execute(args []string, key []byte) {
 			color.PrintBold("Fetching creds for " + command.Name, color.ElectricPink)
 			fmt.Println()
 			showCreds(args[2], key)
-		} else {
+		} else if command.Main == "copy" {
 			color.PrintBold("Copying creds for " + command.Name, color.ElectricPink)
 			copyCreds(args[2], key)
+		} else {
+			color.PrintBold("List of saved credentials: ", color.ElectricPink)
+			fmt.Println()
+			listCreds()
 		}
 		fmt.Println()
 	}
@@ -63,13 +67,32 @@ func buildCommand(args []string) *Command {
 		log.Fatal("[ERROR] Invalid command; go needs to be first argument")
 	}
 
-	if len(args) < 3 {
+	if len(args) < 2 {
 		log.Fatal("[ERROR] Invalid command; Not enought arguments")
 	} else {
 		command.Main = args[1]
-		command.Name = args[2]
+		if len(args) > 2 {
+			command.Name = args[2]
+		}
 	}
 	return &command
+}
+
+func listCreds() {
+	var creds Creds
+	b, err := os.ReadFile("gokey.json")
+	if err != nil {
+		log.Fatal("[ERROR] Error reading gokey.json; cmd.go -> ", err)
+	}
+
+	err = json.Unmarshal(b, &creds)
+	if err != nil {
+		log.Fatal("[ERROR] Error unmarshaling gokey.json; cmd.go -> ", err)
+	}
+
+	for _, entry := range creds.Entries {
+		fmt.Println("Name: ", entry.Name)
+	}
 }
 
 func showCreds(name string, key []byte) {
@@ -102,6 +125,7 @@ func getCreds(name string, key []byte) (string, string) {
 			password = entry.EncryptedPassword
 		}
 	}
+
 	base64_password, err := base64.StdEncoding.DecodeString(password)
 	if err != nil {
 		log.Fatal("[ERROR] Error decoding base64 password; cmd.go -> ", err)
