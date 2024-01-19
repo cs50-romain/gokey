@@ -1,5 +1,5 @@
 1. Reset password
-2. Fuzzy result
+2. Fuzzy result - DONE
 	* If a user enters a name that does not exist, instead of outputting an error, the program could output a list of names similar.
 3. Copy either password or username
 4. Generate a random secure password.
