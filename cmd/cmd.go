@@ -16,6 +16,7 @@ import (
 	color "cs50-romain/gokey/pkg/colors"
 
 	"golang.org/x/term"
+	fuzzy "github.com/agnivade/levenshtein"
 )
 
 type Creds struct {
@@ -123,16 +124,24 @@ func listCreds() error {
 }
 
 func showCreds(name string, key []byte) {
-	username, password, err := getCreds(name, key)
+	username, password, err := getSpecificCreds(name, key)
 	if err != nil {
 		log.Printf(err.Error())
 		return
 	}
-	fmt.Printf("Username: %s\nPassword: %s\n", username, password)
+	if username != "" {
+		fmt.Printf("Username: %s\nPassword: %s\n", username, password)
+	} else {
+		name_list, _ := fuzzyOptions(name)
+		color.PrintBold("Could not find credentials under that name. Other possible options:\n", color.TealGreen)
+		for _, names := range name_list {
+			fmt.Println(names)
+		}
+	}
 }
 
 func copyCreds(name string, key []byte) {
-	_, password, err := getCreds(name, key)	
+	_, password, err := getSpecificCreds(name, key)	
 	if err != nil {
 		log.Printf(err.Error())
 		return
@@ -140,7 +149,28 @@ func copyCreds(name string, key []byte) {
 	clipboard.CopytoClipboard(password)
 }
 
-func getCreds(name string, key []byte) (string, string, error) {
+func fuzzyOptions(name string) ([]string, error) {
+	var creds Creds
+	b, err := os.ReadFile("gokey.json")
+	if err != nil {
+		return nil, errors.New("[ERROR] Error reading gokey.json; cmd.go -> " + err.Error())
+	}
+
+	err = json.Unmarshal(b, &creds)
+	if err != nil {
+		return nil, errors.New("ERROR: could not unmarshal gokey.json; cmd.go -> " + err.Error())
+	}
+
+	var name_list []string
+	for _, entry := range creds.Entries {
+		if fuzzy.ComputeDistance(name, entry.Name) < 4 {
+			name_list = append(name_list, entry.Name)
+		}
+	}
+	return name_list, nil
+}
+
+func getSpecificCreds(name string, key []byte) (string, string, error) {
 	var creds Creds
 	b, err := os.ReadFile("gokey.json")
 	if err != nil {
@@ -159,6 +189,10 @@ func getCreds(name string, key []byte) (string, string, error) {
 			username = entry.Username
 			password = entry.EncryptedPassword
 		}
+	}
+
+	if username == "" {
+		return "", "", nil
 	}
 
 	base64_password, err := base64.StdEncoding.DecodeString(password)
